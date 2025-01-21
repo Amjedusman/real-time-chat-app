@@ -5,7 +5,7 @@ export default function Component() {
     <div className="flex flex-col h-screen bg-gray-200">
       <main className="flex flex-1 items-center justify-center text-center">
         <div className="space-y-4 bg-white p-16 rounded-lg shadow-lg">
-          <h1 className="text-5xl font-bold">Welcome to Real Time Chat!</h1>
+          <h1 className="text-5xl font-bold">Welcome to Velora - Secure chat Application!</h1>
           <p className="text-xl text-gray-500">
             We are happy to have you here. Lets get started.
           </p>
