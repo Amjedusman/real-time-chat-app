@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import axios from "@/lib/axiosInstance";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import ReCAPTCHA from 'react-google-recaptcha';
 
 interface RegisterDetails {
   username: string;
@@ -14,9 +15,13 @@ interface RegisterDetails {
   password: string;
 }
 
+
 export default function RegisterForm() {
   const router = useRouter();
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isCaptchaVerified, setIsCaptchaVerified] = useState(false);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
   
   const {
     register,
@@ -24,7 +29,16 @@ export default function RegisterForm() {
     formState: { errors },
   } = useForm<RegisterDetails>();
 
+  const handleCaptchaChange = (token: string | null) => {
+    setIsCaptchaVerified(!!token);
+  };
+
   const onSubmit = async (data: RegisterDetails) => {
+    if (isLoading || !isCaptchaVerified) return;
+    
+    setIsLoading(true);
+    setError("");
+    
     try {
       await axios.post("/api/auth/register", {
         username: data.username,
@@ -35,6 +49,10 @@ export default function RegisterForm() {
       router.push("/chat");
     } catch (error: any) {
       setError(error.response?.data?.error || "Registration failed");
+      recaptchaRef.current?.reset();
+      setIsCaptchaVerified(false);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -82,8 +100,17 @@ export default function RegisterForm() {
         )}
       </div>
       {error && <p className="text-red-500 text-center">{error}</p>}
-      <Button className="w-full" type="submit">
-        Register
+      <ReCAPTCHA 
+        ref={recaptchaRef}
+        sitekey={process.env.NEXT_PUBLIC_REACT_APP_SITE_KEY || ''}
+        onChange={handleCaptchaChange}
+      />
+      <Button 
+        className="w-full" 
+        type="submit" 
+        disabled={isLoading || !isCaptchaVerified}
+      >
+        {isLoading ? "Registering..." : "Register"}
       </Button>
     </form>
   );
