@@ -8,6 +8,9 @@ import { useRouter } from "next/navigation";
 import axios from "@/lib/axiosInstance";
 import { useState, useRef } from "react";
 import ReCAPTCHA from 'react-google-recaptcha';
+import Webcam from "react-webcam";
+import Image from "next/image";
+import html2canvas from "html2canvas";
 
 interface RegisterDetails {
   username: string;
@@ -56,6 +59,31 @@ export default function RegisterForm() {
     }
   };
 
+  const startWebcam = () => {
+    setShowWebcam(true);
+    setImage(null);
+  };
+
+  const capturePhoto = () => {
+    if (webcamRef.current) {
+      const imageSrc = webcamRef.current.getScreenshot();
+      setImage(imageSrc);
+      setShowWebcam(false);
+    }
+  };
+
+  // Webcam functionality
+  const webcamRef = useRef<Webcam>(null);
+  const [image, setImage] = useState<string | null>(null);
+  const [showWebcam, setShowWebcam] = useState(false);
+  const [webcamError, setWebcamError] = useState<string | null>(null);
+
+  const videoConstraints = {
+    width: 200,
+    height: 150,
+    facingMode: "user"
+  };
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-2">
@@ -100,11 +128,90 @@ export default function RegisterForm() {
         )}
       </div>
       {error && <p className="text-red-500 text-center">{error}</p>}
-      <ReCAPTCHA 
-        ref={recaptchaRef}
-        sitekey={process.env.NEXT_PUBLIC_REACT_APP_SITE_KEY || ''}
-        onChange={handleCaptchaChange}
-      />
+      
+      
+      <div className="flex flex-col items-center space-y-4">
+        <div className="relative w-[200px] h-[150px] bg-gray-100 rounded-md overflow-hidden">
+          {showWebcam ? (
+            <Webcam
+              audio={false}
+              ref={webcamRef}
+              screenshotFormat="image/png"
+              videoConstraints={videoConstraints}
+              className="absolute inset-0 w-full h-full object-cover"
+              onUserMediaError={(err) => {
+                setWebcamError("Failed to access webcam");
+                console.error(err);
+              }}
+              mirrored={true}
+            />
+          ) : image ? (
+            <Image
+              src={image}
+              width={800}
+              height={600}
+              alt="Captured"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-400">
+              <span>{webcamError || "No image captured"}</span>
+            </div>
+          )}
+        </div>
+
+        {!showWebcam ? (
+          <Button 
+            type="button" 
+            onClick={startWebcam}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            Open Camera
+          </Button>
+        ) : (
+          <Button 
+            type="button" 
+            onClick={capturePhoto}
+            variant="default"
+            className="flex items-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            Capture Photo
+          </Button>
+        )}
+        {image && (
+          <Button
+            type="button"
+            onClick={startWebcam}
+            variant="destructive"
+            className="flex items-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/>
+              <line x1="18" y1="9" x2="12" y2="15"/>
+              <line x1="12" y1="9" x2="18" y2="15"/>
+            </svg>
+            Retake
+          </Button>
+        )}
+      </div>
+
+      <center>
+        <ReCAPTCHA 
+          ref={recaptchaRef}
+          sitekey={process.env.NEXT_PUBLIC_REACT_APP_SITE_KEY || ''}
+          onChange={handleCaptchaChange}
+        />
+      </center>
+      
       <Button 
         className="w-full" 
         type="submit" 
