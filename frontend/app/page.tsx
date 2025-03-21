@@ -7,7 +7,7 @@ export default function Component() {
         <div className="space-y-4 bg-white p-16 rounded-lg shadow-lg">
           <h1 className="text-5xl font-bold">Welcome to Velora - Secure chat Application!</h1>
           <p className="text-xl text-gray-500">
-            We are happy to have you here. Lets get started.
+          Empowering Secure and Intelligent Communication. Lets get started.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row items-center justify-center">
             <Link
