@@ -43,6 +43,13 @@ export default function RegisterForm() {
     setError("");
     
     try {
+      // First register the face
+      const faceRegistered = await handleFaceRegistration(data.email);
+      if (!faceRegistered) {
+        throw new Error("Face registration failed");
+      }
+
+      // Then register the user
       await axios.post("/api/auth/register", {
         username: data.username,
         email: data.email,
@@ -51,7 +58,7 @@ export default function RegisterForm() {
 
       router.push("/chat");
     } catch (error: any) {
-      setError(error.response?.data?.error || "Registration failed");
+      setError(error.response?.data?.error || error.message || "Registration failed");
       recaptchaRef.current?.reset();
       setIsCaptchaVerified(false);
     } finally {
@@ -82,6 +89,36 @@ export default function RegisterForm() {
     width: 200,
     height: 150,
     facingMode: "user"
+  };
+
+  const handleFaceRegistration = async (email: string) => {
+    if (!image) {
+      setError("Please capture a photo first");
+      return false;
+    }
+
+    try {
+      const response = await fetch('/api/auth/register-face', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image,
+          email,
+        }),
+      });
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message);
+      }
+      return true;
+    } catch (error) {
+      console.error('Face registration error:', error);
+      setError(error.message || "Face registration failed");
+      return false;
+    }
   };
 
   return (
