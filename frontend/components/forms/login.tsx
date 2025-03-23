@@ -1,21 +1,24 @@
 "use client";
 
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
-import { useState, useRef } from "react";
 import ReCAPTCHA from "react-google-recaptcha";
 import Webcam from "react-webcam";
 import Image from "next/image";
-import html2canvas from "html2canvas";
+import * as faceapi from "face-api.js";
 
 interface LoginDetails {
   email: string;
   password: string;
 }
+
+const EAR_THRESHOLD = 0.25;
+const BLINK_CONSEC_FRAMES = 2;
 
 export default function LoginForm() {
   const router = useRouter();
@@ -27,7 +30,7 @@ export default function LoginForm() {
   const webcamRef = useRef<Webcam>(null);
   const [image, setImage] = useState<string | null>(null);
   const [showWebcam, setShowWebcam] = useState(false);
-  const [webcamError, setWebcamError] = useState<string | null>(null);
+  const [showBlinkMessage, setShowBlinkMessage] = useState(false);
 
   const {
     register,
@@ -35,23 +38,80 @@ export default function LoginForm() {
     formState: { errors },
   } = useForm<LoginDetails>();
 
+  const blinkCounterRef = useRef(0);
+  const blinkDetectedRef = useRef(false);
+
   const handleCaptchaChange = (token: string | null) => {
     setIsCaptchaVerified(!!token);
   };
 
-  // Verify the image by sending it to the Flask endpoint.
-  // This function now returns the recognized face's name.
+  useEffect(() => {
+    const loadModels = async () => {
+      const MODEL_URL = "/models";
+      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+    };
+    loadModels();
+  }, []);
+
+  const processFrame = useCallback(async () => {
+    if (!webcamRef.current || !showWebcam) return;
+    const video = webcamRef.current.video;
+    if (!video) return;
+
+    const detections = await faceapi
+      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+      .withFaceLandmarks();
+
+    if (detections && detections.landmarks) {
+      const leftEye = detections.landmarks.getLeftEye();
+      const vertical1 = Math.hypot(leftEye[1].x - leftEye[5].x, leftEye[1].y - leftEye[5].y);
+      const vertical2 = Math.hypot(leftEye[2].x - leftEye[4].x, leftEye[2].y - leftEye[4].y);
+      const horizontal = Math.hypot(leftEye[0].x - leftEye[3].x, leftEye[0].y - leftEye[3].y);
+      const ear = (vertical1 + vertical2) / (2.0 * horizontal);
+
+      if (ear < EAR_THRESHOLD) {
+        blinkCounterRef.current += 1;
+      } else {
+        if (blinkCounterRef.current >= BLINK_CONSEC_FRAMES) {
+          if (!blinkDetectedRef.current) {
+            blinkDetectedRef.current = true;
+            capturePhoto();
+          }
+        }
+        blinkCounterRef.current = 0;
+      }
+    }
+  }, [showWebcam]);
+
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+    if (showWebcam) {
+      intervalId = setInterval(processFrame, 100);
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [processFrame, showWebcam]);
+
+  const capturePhoto = () => {
+    if (webcamRef.current) {
+      const imageSrc = webcamRef.current.getScreenshot();
+      setImage(imageSrc);
+      setShowWebcam(false);
+      setShowBlinkMessage(false);
+    }
+  };
+
   const verifyImage = async (imageSrc: string) => {
     try {
       const response = await fetch("http://localhost:5000/face-recognizer", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image: imageSrc }),
       });
       const data = await response.json();
-      return data.name; // Expecting the backend to return { "name": "<recognized_name>" }
+      return data.name;
     } catch (error) {
       console.error("Image verification failed:", error);
       return null;
@@ -64,11 +124,9 @@ export default function LoginForm() {
     setIsLoading(true);
     setError("");
 
-    // Get recognized name from face-recognizer endpoint
     const recognizedName = await verifyImage(image);
-    // Check if the recognized name matches the email provided (from DB, name field is the email)
     if (!recognizedName || recognizedName !== data.email) {
-      setError("Face verification failed: provided email does not match recognized face.");
+      setError("Face verification failed: Provided email does not match recognized face.");
       setIsLoading(false);
       return;
     }
@@ -88,14 +146,9 @@ export default function LoginForm() {
   const startWebcam = () => {
     setShowWebcam(true);
     setImage(null);
-  };
-
-  const capturePhoto = () => {
-    if (webcamRef.current) {
-      const imageSrc = webcamRef.current.getScreenshot();
-      setImage(imageSrc);
-      setShowWebcam(false);
-    }
+    setShowBlinkMessage(true);
+    blinkCounterRef.current = 0;
+    blinkDetectedRef.current = false;
   };
 
   return (
@@ -114,27 +167,32 @@ export default function LoginForm() {
 
       <div className="flex flex-col items-center space-y-4">
         {showWebcam ? (
-          <Webcam audio={false} ref={webcamRef} screenshotFormat="image/png" />
+          <>
+            <Webcam
+              audio={false}
+              ref={webcamRef}
+              screenshotFormat="image/png"
+              onUserMediaError={() => setError("Failed to access webcam")}
+              mirrored={true}
+            />
+            {showBlinkMessage && <p className="text-blue-500 text-sm">Blink your eyes to capture the image...</p>}
+          </>
         ) : image ? (
           <Image src={image} width={200} height={150} alt="Captured" />
         ) : (
           <p>No image captured</p>
         )}
-        <div className="flex gap-2">
-          {!showWebcam ? (
-            <Button type="button" onClick={startWebcam} variant="outline">
-              Open Camera
-            </Button>
-          ) : (
-            <Button type="button" onClick={capturePhoto} variant="default">
-              Capture Photo
-            </Button>
-          )}
-        </div>
+        {!showWebcam && !image && (
+          <Button type="button" onClick={startWebcam} variant="outline">
+            Open Camera
+          </Button>
+        )}
       </div>
+
       <center>
         <ReCAPTCHA ref={recaptchaRef} sitekey={process.env.NEXT_PUBLIC_REACT_APP_SITE_KEY || ""} onChange={handleCaptchaChange} />
       </center>
+
       <Button className="w-full" type="submit" disabled={isLoading || !isCaptchaVerified || !image}>
         {isLoading ? "Logging in..." : "Login"}
       </Button>
