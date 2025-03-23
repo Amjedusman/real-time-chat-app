@@ -9,11 +9,13 @@ import { Chat } from "@/types/chatTypes";
 interface SendChatMessageForm {
   selectedChat: Chat;
   onMessageSent: () => void;
+  isBlocked?: boolean;
 }
 
 const SendChatMessageForm = ({
   selectedChat,
   onMessageSent,
+  isBlocked = false,
 }: SendChatMessageForm) => {
   const { register, handleSubmit, reset } = useForm();
   const { user } = useAuth();
@@ -47,8 +49,12 @@ const SendChatMessageForm = ({
 
   return (
     <form className="flex items-center gap-2" onSubmit={handleSubmit(sendMessage)}>
-      <Input placeholder="Type a message" {...register("content")} />
-      <Button type="submit">Send</Button>
+      <Input 
+        placeholder={isBlocked ? "You can't continue this conversation" : "Type a message"} 
+        {...register("content")} 
+        disabled={isBlocked}
+      />
+      <Button type="submit" disabled={isBlocked}>Send</Button>
     </form>
   );
 };

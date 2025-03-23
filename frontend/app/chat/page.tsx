@@ -19,14 +19,24 @@ export default function Page() {
   const { user } = useAuth();
   const { chats, chatsAreLoading, chatsHasError, mutate } = useChats();
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
+  const [isBlocked, setIsBlocked] = useState(false);
+
+  // Load blocked state when chat is selected
+  useEffect(() => {
+    if (selectedChat) {
+      const blockedChats = JSON.parse(localStorage.getItem('blockedChats') || '[]');
+      setIsBlocked(blockedChats.includes(selectedChat.chatId));
+    }
+  }, [selectedChat]);
 
   useEffect(() => {
     if (selectedChat && chats) {
-      let currentSelectedChat = chats.data.find(
-        (c) => selectedChat.chatId == c.chatId
+      const currentSelectedChat = chats.data.find(
+        (c) => selectedChat.chatId === c.chatId
       );
-      console.log(currentSelectedChat);
-      setSelectedChat({ ...currentSelectedChat });
+      if (currentSelectedChat) {
+        setSelectedChat(currentSelectedChat);
+      }
     }
   }, [chats]);
 
@@ -41,10 +51,23 @@ export default function Page() {
     return () => {
       socket.off("newMessage");
     };
-  }, [selectedChat]);
+  }, [selectedChat, mutate]);
 
-  const handleChatSelect = (chat) => {
+  const handleChatSelect = (chat: Chat) => {
     setSelectedChat(chat);
+    const blockedChats = JSON.parse(localStorage.getItem('blockedChats') || '[]');
+    setIsBlocked(blockedChats.includes(chat.chatId));
+  };
+
+  const handleBlock = () => {
+    if (selectedChat) {
+      const blockedChats = JSON.parse(localStorage.getItem('blockedChats') || '[]');
+      if (!blockedChats.includes(selectedChat.chatId)) {
+        blockedChats.push(selectedChat.chatId);
+        localStorage.setItem('blockedChats', JSON.stringify(blockedChats));
+      }
+      setIsBlocked(true);
+    }
   };
 
   return (
@@ -64,11 +87,15 @@ export default function Page() {
         <div className="flex flex-col flex-1">
           {selectedChat ? (
             <>
-              <ChatWindow chat={selectedChat} />
+              <ChatWindow 
+                chat={selectedChat} 
+                onBlock={handleBlock}
+              />
               <div className="border-t p-4">
                 <SendChatMessageForm
                   selectedChat={selectedChat}
                   onMessageSent={() => mutate()}
+                  isBlocked={isBlocked}
                 />
               </div>
             </>

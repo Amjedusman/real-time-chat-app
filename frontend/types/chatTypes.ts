@@ -23,5 +23,5 @@ export interface UseChatsReturn {
     chats?: ApiPaginationResponse<Chat[]>;
     chatsAreLoading: boolean;
     chatsHasError: Error | undefined;
-    mutate: void;
+    mutate: () => Promise<any>;
 }

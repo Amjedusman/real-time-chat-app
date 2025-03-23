@@ -2,11 +2,18 @@ import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
 import { ChatMessage, Chat } from "@/types/chatTypes";
+import SuspiciousUserAlert from "./SuspiciousUserAlert";
 
-const ChatWindow = ({ chat }: { chat: Chat | null }) => {
+interface ChatWindowProps {
+  chat: Chat | null;
+  onBlock: () => void;
+}
+
+const ChatWindow = ({ chat, onBlock }: ChatWindowProps) => {
   const { user } = useAuth();
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const [suspiciousMessage, setSuspiciousMessage] = useState<ChatMessage | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView();
@@ -16,6 +23,35 @@ const ChatWindow = ({ chat }: { chat: Chat | null }) => {
     scrollToBottom();
   }, [chat?.messages]);
 
+  const checkToxicity = async (message: ChatMessage) => {
+    try {
+      const response = await fetch("http://localhost:5000/find-toxicity", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: message.content,
+        }),
+      });
+      const data = await response.json();
+      console.log(data.predicted_class);
+      if (data.predicted_class === "toxic") {
+        setSuspiciousMessage(message);
+      }
+    } catch (error) {
+      console.error("Error checking toxicity:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (chat?.messages) {
+      chat.messages.forEach((message) => {
+        checkToxicity(message);
+      });
+    }
+  }, [chat?.messages]);
+
   return (
     <div className="flex-1 overflow-auto p-4">
       <div className="flex flex-col gap-4">
@@ -23,7 +59,7 @@ const ChatWindow = ({ chat }: { chat: Chat | null }) => {
           <div
             key={message.id}
             className={`flex items-start gap-2 ${
-              message.userId === user.id ? "text-right self-end" : ""
+              message.userId === user!.id ? "text-right self-end" : ""
             }`}
           >
             <Avatar>
@@ -39,6 +75,20 @@ const ChatWindow = ({ chat }: { chat: Chat | null }) => {
         ))}
         <div ref={messagesEndRef}></div>
       </div>
+
+      {suspiciousMessage && (
+        <SuspiciousUserAlert
+          onBlock={() => {
+            console.log("User blocked:", suspiciousMessage.senderUsername);
+            onBlock();
+            setSuspiciousMessage(null); // Close the alert
+          }}
+          onIgnore={() => {
+            console.log("User ignored:", suspiciousMessage.senderUsername);
+            setSuspiciousMessage(null); // Close the alert
+          }}
+        />
+      )}
     </div>
   );
 };

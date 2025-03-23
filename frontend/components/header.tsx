@@ -34,7 +34,7 @@ const Header = () => {
         <h1 className="text-lg font-semibold text-white">Chat App</h1>
       </div>
       <div className="flex items-center gap-6 text-white">
-        <SuspiciousUserAlert onBlock={handleBlock} onIgnore={handleIgnore} />
+        {/* <SuspiciousUserAlert onBlock={handleBlock} onIgnore={handleIgnore} /> */}
         <ProfileModal />
         <button onClick={handleLogout}>Log out</button>
       </div>

@@ -52,7 +52,16 @@ export default function LoginForm() {
       await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
     };
     loadModels();
-  }, []);
+
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.key === "q" && showWebcam) {
+        capturePhoto();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyPress);
+    return () => document.removeEventListener("keydown", handleKeyPress);
+  }, [showWebcam]);
 
   const processFrame = useCallback(async () => {
     if (!webcamRef.current || !showWebcam) return;
@@ -155,43 +164,33 @@ export default function LoginForm() {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
-        <Input {...register("email", { required: "Email is required" })} placeholder="m@example.com" type="email" />
+        <Input {...register("email", { required: "Email is required" })} type="email" placeholder="m@example.com" />
         {errors.email && <p className="text-red-500">{errors.email.message}</p>}
       </div>
+
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
         <Input {...register("password", { required: "Password is required" })} type="password" />
         {errors.password && <p className="text-red-500">{errors.password.message}</p>}
       </div>
-      {error && <p className="text-red-500 text-center">{error}</p>}
 
       <div className="flex flex-col items-center space-y-4">
         {showWebcam ? (
           <>
-            <Webcam
-              audio={false}
-              ref={webcamRef}
-              screenshotFormat="image/png"
-              onUserMediaError={() => setError("Failed to access webcam")}
-              mirrored={true}
-            />
+            <Webcam ref={webcamRef} screenshotFormat="image/png" mirrored={true} />
             {showBlinkMessage && <p className="text-blue-500 text-sm">Blink your eyes to capture the image...</p>}
           </>
         ) : image ? (
-          <Image src={image} width={200} height={150} alt="Captured" />
+          <>
+            <Image src={image} width={200} height={150} alt="Captured" />
+            <Button onClick={startWebcam} variant="outline">Retake</Button>
+          </>
         ) : (
-          <p>No image captured</p>
-        )}
-        {!showWebcam && !image && (
-          <Button type="button" onClick={startWebcam} variant="outline">
-            Open Camera
-          </Button>
+          <Button onClick={startWebcam} variant="outline">Open Camera</Button>
         )}
       </div>
 
-      <center>
-        <ReCAPTCHA ref={recaptchaRef} sitekey={process.env.NEXT_PUBLIC_REACT_APP_SITE_KEY || ""} onChange={handleCaptchaChange} />
-      </center>
+      <ReCAPTCHA ref={recaptchaRef} sitekey={process.env.NEXT_PUBLIC_REACT_APP_SITE_KEY || ""} onChange={handleCaptchaChange} />
 
       <Button className="w-full" type="submit" disabled={isLoading || !isCaptchaVerified || !image}>
         {isLoading ? "Logging in..." : "Login"}
