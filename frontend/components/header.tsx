@@ -13,6 +13,10 @@ const Header = () => {
       await axios.post("/api/auth/logout");
       router.push("/login");
     } catch (error) {
+      if (axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 404)) {
+        router.push("/login");
+        return;
+      }
       console.error("Logout error:", error);
     }
   };

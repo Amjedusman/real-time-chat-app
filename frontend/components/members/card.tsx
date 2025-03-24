@@ -18,7 +18,7 @@ export default function MembersCard({ user }) {
           {user.username}
         </h4>
         <p className="text-xs text-gray-500 mt-2">
-          Lorem ipsum dolor sit amet consectetur adipisicing elit.
+          {/* Lorem ipsum dolor sit amet consectetur adipisicing elit. */}
         </p>
         <div className="flex mt-4 space-x-2">
           <SendMessage receiverId={user.id} />

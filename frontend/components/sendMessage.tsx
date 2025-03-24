@@ -12,7 +12,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import PaperAirplane from "./icons/PaperAirplane";
 import axiosInstance from "@/lib/axiosInstance";
-import { AxiosReponse } from "axios";
+import { AxiosResponse } from "axios";
 import { useState } from "react";
 import { ChatMessageResponse } from "@/types/chatMessageTypes";
 
@@ -27,7 +27,7 @@ export default function SendMessage({ receiverId }: { receiverId: number }) {
           content: formData.get("content"),
           receiverId: receiverId,
         })
-        .then(function (response: AxiosReponse<ChatMessageResponse>) {
+        .then(function (response: AxiosResponse<ChatMessageResponse>) {
           console.log(response);
           setSuccess(true);
         })
@@ -53,11 +53,15 @@ export default function SendMessage({ receiverId }: { receiverId: number }) {
           <div className="space-y-5">
             <DialogHeader className="item-center flex items-center">
               <DialogTitle>Message sent!</DialogTitle>
-              <DialogDescription>Lorem ipsum dolor sit amet.</DialogDescription>
+              <DialogDescription>Now you can send messages to the user.</DialogDescription>
             </DialogHeader>
             <div className="flex items-center">
               <DialogClose asChild className="mx-auto">
-                <Button type="button" variant="secondary">
+                <Button 
+                  type="button" 
+                  variant="secondary" 
+                  onClick={() => window.location.reload()}
+                >
                   Close
                 </Button>
               </DialogClose>
@@ -67,7 +71,7 @@ export default function SendMessage({ receiverId }: { receiverId: number }) {
           <form action={onSendMessage} className="space-y-2">
             <DialogHeader>
               <DialogTitle>Send Message</DialogTitle>
-              <DialogDescription>Lorem ipsum dolor sit amet.</DialogDescription>
+              <DialogDescription>Begin a conversation with the user.</DialogDescription>
             </DialogHeader>
             <Textarea
               name="content"

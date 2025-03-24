@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
 import { ChatMessage, Chat } from "@/types/chatTypes";
 import SuspiciousUserAlert from "./SuspiciousUserAlert";
+import { formatDistanceToNow, format, isToday, isYesterday } from "date-fns";
 
 interface ChatWindowProps {
   chat: Chat | null;
@@ -52,6 +53,26 @@ const ChatWindow = ({ chat, onBlock }: ChatWindowProps) => {
     }
   }, [chat?.messages]);
 
+  const formatMessageDate = (dateString: string) => {
+    const date = new Date(dateString);
+    
+    if (isToday(date)) {
+      return format(date, 'h:mm a');
+    }
+    
+    if (isYesterday(date)) {
+      return `Yesterday, ${format(date, 'h:mm a')}`;
+    }
+    
+    // If it's within the last 7 days, show relative time
+    if (Date.now() - date.getTime() < 7 * 24 * 60 * 60 * 1000) {
+      return formatDistanceToNow(date, { addSuffix: true });
+    }
+    
+    // For older messages, show the full date
+    return format(date, 'MMM d, yyyy h:mm a');
+  };
+
   return (
     <div className="flex-1 overflow-auto p-4">
       <div className="flex flex-col gap-4">
@@ -68,7 +89,7 @@ const ChatWindow = ({ chat, onBlock }: ChatWindowProps) => {
             </Avatar>
             <div className="grid gap-1">
               <div className="font-semibold">{message.senderUsername}</div>
-              <div className="line-clamp-1 text-xs">{message.createdAt}</div>
+              <div className="line-clamp-1 text-xs">{formatMessageDate(message.createdAt)}</div>
               <div className="line-clamp-1 text-sm">{message.content}</div>
             </div>
           </div>

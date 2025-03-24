@@ -11,6 +11,21 @@ interface ChatListProps {
 const ChatList = ({ chats, onSelectChat }: ChatListProps) => {
   const { user } = useAuth();
 
+  // Sort chats by most recent message
+  const sortedChats = [...chats].sort((a, b) => {
+    // If there are no messages in either chat
+    if (!a.messages.length && !b.messages.length) return 0;
+    // If one chat has no messages, put it at the bottom
+    if (!a.messages.length) return 1;
+    if (!b.messages.length) return -1;
+    
+    // Compare the timestamps of the last messages
+    const aLastMessage = a.messages[a.messages.length - 1];
+    const bLastMessage = b.messages[b.messages.length - 1];
+    
+    return new Date(bLastMessage.createdAt).getTime() - new Date(aLastMessage.createdAt).getTime();
+  });
+
   return (
     <nav className="grid gap-4 p-4">
       <MembersSearch />
@@ -24,7 +39,7 @@ const ChatList = ({ chats, onSelectChat }: ChatListProps) => {
           <div className="line-clamp-1 text-xs">{user?.email}</div>
         </div>
       </div>
-      {chats.map((chat: Chat) => {
+      {sortedChats.map((chat: Chat) => {
         return (
           <div
             key={chat.chatId}
