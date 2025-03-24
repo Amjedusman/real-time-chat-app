@@ -16,6 +16,26 @@ const ChatWindow = ({ chat, onBlock }: ChatWindowProps) => {
 
   const [suspiciousMessage, setSuspiciousMessage] = useState<ChatMessage | null>(null);
 
+  // Clear suspicious message when changing chats
+  useEffect(() => {
+    setSuspiciousMessage(null);
+  }, [chat?.chatId]);
+
+  // Modified to store ignored messages per user
+  const isMessageIgnored = (messageId: number, senderId: number) => {
+    const ignoredMessages = JSON.parse(localStorage.getItem(`ignored_messages_${user?.id}`) || '{}');
+    return ignoredMessages[senderId]?.includes(messageId);
+  };
+
+  const addToIgnoredMessages = (messageId: number, senderId: number) => {
+    const ignoredMessages = JSON.parse(localStorage.getItem(`ignored_messages_${user?.id}`) || '{}');
+    if (!ignoredMessages[senderId]) {
+      ignoredMessages[senderId] = [];
+    }
+    ignoredMessages[senderId].push(messageId);
+    localStorage.setItem(`ignored_messages_${user?.id}`, JSON.stringify(ignoredMessages));
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView();
   };
@@ -26,6 +46,9 @@ const ChatWindow = ({ chat, onBlock }: ChatWindowProps) => {
 
   const checkToxicity = async (message: ChatMessage) => {
     try {
+      // Skip if it's our message or if it's already been ignored
+      if (message.userId === user!.id || isMessageIgnored(message.id, message.userId)) return false;
+
       const response = await fetch("http://localhost:5000/find-toxicity", {
         method: "POST",
         headers: {
@@ -39,17 +62,27 @@ const ChatWindow = ({ chat, onBlock }: ChatWindowProps) => {
       console.log(data.predicted_class);
       if (data.predicted_class === "toxic") {
         setSuspiciousMessage(message);
+        return true;
       }
+      return false;
     } catch (error) {
       console.error("Error checking toxicity:", error);
+      return false;
     }
   };
 
   useEffect(() => {
     if (chat?.messages) {
-      chat.messages.forEach((message) => {
-        checkToxicity(message);
-      });
+      const checkAllMessages = async () => {
+        for (const message of chat.messages) {
+          if (message.userId !== user!.id && !isMessageIgnored(message.id, message.userId)) {
+            const isToxic = await checkToxicity(message);
+            if (isToxic) break;
+          }
+        }
+      };
+      
+      checkAllMessages();
     }
   }, [chat?.messages]);
 
@@ -102,11 +135,13 @@ const ChatWindow = ({ chat, onBlock }: ChatWindowProps) => {
           onBlock={() => {
             console.log("User blocked:", suspiciousMessage.senderUsername);
             onBlock();
-            setSuspiciousMessage(null); // Close the alert
+            addToIgnoredMessages(suspiciousMessage.id, suspiciousMessage.userId);
+            setSuspiciousMessage(null);
           }}
           onIgnore={() => {
             console.log("User ignored:", suspiciousMessage.senderUsername);
-            setSuspiciousMessage(null); // Close the alert
+            addToIgnoredMessages(suspiciousMessage.id, suspiciousMessage.userId);
+            setSuspiciousMessage(null);
           }}
         />
       )}
