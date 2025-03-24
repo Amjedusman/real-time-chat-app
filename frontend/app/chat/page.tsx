@@ -79,7 +79,11 @@ export default function Page() {
           {chatsAreLoading ? (
             <div>Loading...</div>
           ) : chats?.data ? (
-            <ChatList chats={chats.data} onSelectChat={handleChatSelect} />
+            <ChatList 
+              chats={chats.data} 
+              onSelectChat={handleChatSelect} 
+              selectedChat={selectedChat}
+            />
           ) : (
             <div>No chats available.</div>
           )}

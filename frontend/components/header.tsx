@@ -3,10 +3,12 @@ import { useRouter } from "next/navigation";
 import TextIcon from "@/components/icons/TextIcon";
 import ProfileModal from "@/components/profileModal";
 import SuspiciousUserAlert from "@/components/SuspiciousUserAlert";
-
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
 
 const Header = () => {
   const router = useRouter();
+  const [isGroqEnabled, setIsGroqEnabled] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -31,6 +33,12 @@ const Header = () => {
     console.log("Alert ignored");
   };
 
+  const toggleGroq = () => {
+    setIsGroqEnabled(!isGroqEnabled);
+    // Store the preference in localStorage so it persists across refreshes
+    localStorage.setItem('groq-enabled', (!isGroqEnabled).toString());
+  };
+
   return (
     <header className="flex items-center justify-between px-6 py-4 border-b bg-gray-900 text-white">
       <div className="flex items-center gap-2">
@@ -38,7 +46,18 @@ const Header = () => {
         <h1 className="text-lg font-semibold text-white">Chat App</h1>
       </div>
       <div className="flex items-center gap-6 text-white">
-        {/* <SuspiciousUserAlert onBlock={handleBlock} onIgnore={handleIgnore} /> */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={toggleGroq}
+          className={`${
+            isGroqEnabled 
+              ? 'bg-green-600 hover:bg-green-700' 
+              : 'bg-gray-600 hover:bg-gray-700'
+          } text-white border-none`}
+        >
+          Groq {isGroqEnabled ? 'On' : 'Off'}
+        </Button>
         <ProfileModal />
         <button onClick={handleLogout}>Log out</button>
       </div>

@@ -6,9 +6,10 @@ import { Chat } from "@/types/chatTypes";
 interface ChatListProps {
   chats: Chat[];
   onSelectChat: (chat: Chat) => void;
+  selectedChat: Chat | null;
 }
 
-const ChatList = ({ chats, onSelectChat }: ChatListProps) => {
+const ChatList = ({ chats, onSelectChat, selectedChat }: ChatListProps) => {
   const { user } = useAuth();
 
   // Sort chats by most recent message
@@ -40,10 +41,15 @@ const ChatList = ({ chats, onSelectChat }: ChatListProps) => {
         </div>
       </div>
       {sortedChats.map((chat: Chat) => {
+        const isSelected = selectedChat?.chatId === chat.chatId;
         return (
           <div
             key={chat.chatId}
-            className="flex items-center gap-2 cursor-pointer"
+            className={`flex items-center gap-2 cursor-pointer p-2 rounded-md transition-colors duration-200 ${
+              isSelected 
+                ? 'bg-gray-800 text-white' 
+                : 'hover:bg-gray-100'
+            }`}
             onClick={() => onSelectChat(chat)}
           >
             <Avatar>
@@ -52,7 +58,9 @@ const ChatList = ({ chats, onSelectChat }: ChatListProps) => {
             </Avatar>
             <div className="grid gap-1">
               <div className="font-semibold">{chat.participantUsername}</div>
-              <div className="line-clamp-1 text-xs">
+              <div className={`line-clamp-1 text-xs ${
+                isSelected ? 'text-gray-300' : 'text-gray-500'
+              }`}>
                 {chat.lastMessage ?? "No messages"}
               </div>
             </div>
