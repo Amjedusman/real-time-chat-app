@@ -8,9 +8,10 @@ import { formatDistanceToNow, format, isToday, isYesterday } from "date-fns";
 interface ChatWindowProps {
   chat: Chat | null;
   onBlock: () => void;
+  isBlocked: boolean;
 }
 
-const ChatWindow = ({ chat, onBlock }: ChatWindowProps) => {
+const ChatWindow = ({ chat, onBlock, isBlocked }: ChatWindowProps) => {
   const { user } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -106,6 +107,15 @@ const ChatWindow = ({ chat, onBlock }: ChatWindowProps) => {
     return format(date, 'MMM d, yyyy h:mm a');
   };
 
+  const handleUnblock = () => {
+    if (chat) {
+      const blockedChats = JSON.parse(localStorage.getItem('blockedChats') || '[]');
+      const updatedBlockedChats = blockedChats.filter((id: number) => id !== chat.chatId);
+      localStorage.setItem('blockedChats', JSON.stringify(updatedBlockedChats));
+      window.location.reload(); // Refresh to update the blocked state
+    }
+  };
+
   return (
     <div className="flex-1 overflow-auto p-4">
       <div className="flex flex-col gap-4">
@@ -130,19 +140,25 @@ const ChatWindow = ({ chat, onBlock }: ChatWindowProps) => {
         <div ref={messagesEndRef}></div>
       </div>
 
-      {suspiciousMessage && (
+      {(suspiciousMessage || isBlocked) && (
         <SuspiciousUserAlert
           onBlock={() => {
-            console.log("User blocked:", suspiciousMessage.senderUsername);
+            console.log("User blocked:", suspiciousMessage?.senderUsername);
             onBlock();
-            addToIgnoredMessages(suspiciousMessage.id, suspiciousMessage.userId);
+            if (suspiciousMessage) {
+              addToIgnoredMessages(suspiciousMessage.id, suspiciousMessage.userId);
+            }
             setSuspiciousMessage(null);
           }}
           onIgnore={() => {
-            console.log("User ignored:", suspiciousMessage.senderUsername);
-            addToIgnoredMessages(suspiciousMessage.id, suspiciousMessage.userId);
+            console.log("User ignored:", suspiciousMessage?.senderUsername);
+            if (suspiciousMessage) {
+              addToIgnoredMessages(suspiciousMessage.id, suspiciousMessage.userId);
+            }
             setSuspiciousMessage(null);
           }}
+          isBlocked={isBlocked}
+          onUnblock={handleUnblock}
         />
       )}
     </div>

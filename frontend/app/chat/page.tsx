@@ -90,6 +90,7 @@ export default function Page() {
               <ChatWindow 
                 chat={selectedChat} 
                 onBlock={handleBlock}
+                isBlocked={isBlocked}
               />
               <div className="border-t p-4">
                 <SendChatMessageForm
