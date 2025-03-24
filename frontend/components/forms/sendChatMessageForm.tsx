@@ -50,7 +50,11 @@ const SendChatMessageForm = ({
   return (
     <form className="flex items-center gap-2" onSubmit={handleSubmit(sendMessage)}>
       <Input 
-        placeholder={isBlocked ? "You can't continue this conversation" : "Type a message"} 
+        placeholder={
+          isBlocked 
+            ? `You have blocked ${selectedChat.participantUsername}. Unblock to continue conversation.` 
+            : "Type a message"
+        } 
         {...register("content")} 
         disabled={isBlocked}
       />

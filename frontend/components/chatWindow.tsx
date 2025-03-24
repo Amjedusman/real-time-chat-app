@@ -14,8 +14,26 @@ interface ChatWindowProps {
 const ChatWindow = ({ chat, onBlock, isBlocked }: ChatWindowProps) => {
   const { user } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
   const [suspiciousMessage, setSuspiciousMessage] = useState<ChatMessage | null>(null);
+  const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
+
+  // Filter out messages if the chat is blocked
+  const visibleMessages = chat?.messages?.filter(message => {
+    if (isBlocked && message.userId === chat.participantUserId) {
+      // Don't show messages from blocked user
+      return false;
+    }
+    return true;
+  });
+
+  // Show blocked message notification when messages are filtered
+  useEffect(() => {
+    if (isBlocked && chat?.messages?.some(m => m.userId === chat.participantUserId)) {
+      setBlockedMessage(`You have blocked ${chat.participantUsername}. Their messages are hidden.`);
+    } else {
+      setBlockedMessage(null);
+    }
+  }, [isBlocked, chat]);
 
   // Clear suspicious message when changing chats
   useEffect(() => {
@@ -118,8 +136,14 @@ const ChatWindow = ({ chat, onBlock, isBlocked }: ChatWindowProps) => {
 
   return (
     <div className="flex-1 overflow-auto p-4">
+      {blockedMessage && (
+        <div className="bg-red-50 text-red-600 p-2 mb-4 rounded-md text-sm">
+          {blockedMessage}
+        </div>
+      )}
+      
       <div className="flex flex-col gap-4">
-        {chat?.messages?.map((message: ChatMessage) => (
+        {visibleMessages?.map((message: ChatMessage) => (
           <div
             key={message.id}
             className={`flex items-start gap-2 ${
