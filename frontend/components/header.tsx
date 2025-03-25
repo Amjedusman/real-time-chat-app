@@ -8,7 +8,9 @@ import { useState } from "react";
 
 const Header = () => {
   const router = useRouter();
-  const [isGroqEnabled, setIsGroqEnabled] = useState(false);
+  const [isGroqEnabled, setIsGroqEnabled] = useState(() => {
+    return localStorage.getItem('groq-enabled') === 'true';
+  });
 
   const handleLogout = async () => {
     try {
@@ -34,9 +36,10 @@ const Header = () => {
   };
 
   const toggleGroq = () => {
-    setIsGroqEnabled(!isGroqEnabled);
-    // Store the preference in localStorage so it persists across refreshes
-    localStorage.setItem('groq-enabled', (!isGroqEnabled).toString());
+    const newState = !isGroqEnabled;
+    setIsGroqEnabled(newState);
+    localStorage.setItem('groq-enabled', newState.toString());
+    console.log(`Groq mode ${newState ? 'enabled' : 'disabled'} - Using ${newState ? 'Gemma2-9b-it model' : 'find-toxicity endpoint'}`);
   };
 
   return (

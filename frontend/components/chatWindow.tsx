@@ -63,27 +63,95 @@ const ChatWindow = ({ chat, onBlock, isBlocked }: ChatWindowProps) => {
     scrollToBottom();
   }, [chat?.messages]);
 
+  // Keep track of checked messages
+  const checkedMessages = useRef(new Set());
+
   const checkToxicity = async (message: ChatMessage) => {
     try {
-      // Skip if it's our message or if it's already been ignored
-      if (message.userId === user!.id || isMessageIgnored(message.id, message.userId)) return false;
-
-      const response = await fetch("http://localhost:5000/find-toxicity", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          text: message.content,
-        }),
-      });
-      const data = await response.json();
-      console.log(data.predicted_class);
-      if (data.predicted_class === "toxic") {
-        setSuspiciousMessage(message);
-        return true;
+      // Skip if it's our message, already ignored, or already checked
+      if (message.userId === user!.id || 
+          isMessageIgnored(message.id, message.userId) || 
+          checkedMessages.current.has(message.id)) {
+        return false;
       }
-      return false;
+
+      // Add message to checked set
+      checkedMessages.current.add(message.id);
+
+      console.log("Checking toxicity for message:", message.content);
+
+      // Get Groq state from localStorage
+      const isGroqEnabled = localStorage.getItem('groq-enabled') === 'true';
+      
+      if (isGroqEnabled) {
+        // Use Groq API directly when Groq is enabled
+        console.log("Using Groq model for toxicity detection");
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer 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`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: "gemma2-9b-it",
+            messages: [
+              {
+                role: "system",
+                content: "You are a toxicity detection system. Analyze the following message and respond with ONLY 'toxic' or 'non_toxic'."
+              },
+              {
+                role: "user",
+                content: message.content
+              }
+            ],
+            temperature: 0.1,
+            max_tokens: 10
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Groq API error: ${response.status}`);
+        }
+
+        const groqData = await response.json();
+        console.log("Groq API response:", groqData);
+
+        const classification = groqData.choices[0].message.content.toLowerCase().trim();
+        console.log("Groq classification:", classification);
+
+        if (classification === 'toxic') {
+          console.log("Groq detected toxic message:", message.content);
+          setSuspiciousMessage(message);
+          return true;
+        }
+        return false;
+      } else {
+        // Use find-toxicity endpoint when Groq is disabled
+        console.log("Using find-toxicity endpoint for toxicity detection");
+        const response = await fetch("http://localhost:5000/find-toxicity", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            text: message.content
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Toxicity check failed');
+        }
+
+        const data = await response.json();
+        console.log("Find-toxicity response:", data);
+
+        if (data.predicted_class === "toxic") {
+          console.log("Find-toxicity detected toxic message:", message.content);
+          setSuspiciousMessage(message);
+          return true;
+        }
+        return false;
+      }
     } catch (error) {
       console.error("Error checking toxicity:", error);
       return false;
@@ -94,7 +162,9 @@ const ChatWindow = ({ chat, onBlock, isBlocked }: ChatWindowProps) => {
     if (chat?.messages) {
       const checkAllMessages = async () => {
         for (const message of chat.messages) {
-          if (message.userId !== user!.id && !isMessageIgnored(message.id, message.userId)) {
+          if (message.userId !== user!.id && 
+              !isMessageIgnored(message.id, message.userId) &&
+              !checkedMessages.current.has(message.id)) {
             const isToxic = await checkToxicity(message);
             if (isToxic) break;
           }
@@ -103,6 +173,11 @@ const ChatWindow = ({ chat, onBlock, isBlocked }: ChatWindowProps) => {
       
       checkAllMessages();
     }
+
+    // Clear checked messages when chat changes
+    return () => {
+      checkedMessages.current.clear();
+    };
   }, [chat?.messages]);
 
   const formatMessageDate = (dateString: string) => {
@@ -150,10 +225,10 @@ const ChatWindow = ({ chat, onBlock, isBlocked }: ChatWindowProps) => {
               message.userId === user!.id ? "text-right self-end" : ""
             }`}
           >
-            <Avatar>
+            {/* <Avatar>
               <AvatarImage alt="@shadcn" />
               <AvatarFallback>CN</AvatarFallback>
-            </Avatar>
+            </Avatar> */}
             <div className="grid gap-1">
               <div className="font-semibold">{message.senderUsername}</div>
               <div className="line-clamp-1 text-xs">{formatMessageDate(message.createdAt)}</div>
