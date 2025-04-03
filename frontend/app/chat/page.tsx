@@ -12,6 +12,7 @@ import axios from "@/lib/axiosInstance";
 import { BACKEND_URL } from "@/lib/config";
 import { Chat } from "@/types/chatTypes";
 import SendChatMessageForm from "@/components/forms/sendChatMessageForm";
+import axiosInstance from "@/lib/axiosInstance";
 
 const socket = io(BACKEND_URL);
 
@@ -45,6 +46,37 @@ export default function Page() {
 
   const handleChatSelect = (chat) => {
     setSelectedChat(chat);
+    const blockedChats = JSON.parse(localStorage.getItem('blockedChats') || '[]');
+    setIsBlocked(blockedChats.includes(chat.chatId));
+  };
+
+  const handleBlock = async () => {
+    if (selectedChat) {
+      try {
+        // First update local UI state
+        const blockedChats = JSON.parse(localStorage.getItem('blockedChats') || '[]');
+        if (!blockedChats.includes(selectedChat.chatId)) {
+          blockedChats.push(selectedChat.chatId);
+          localStorage.setItem('blockedChats', JSON.stringify(blockedChats));
+        }
+        setIsBlocked(true);
+        
+        // Then update the database by calling the block API
+        const response = await axiosInstance.post('/api/blocks', {
+          blockedId: selectedChat.participantUserId,
+          reason: 'User blocked from chat',
+          messageId: selectedChat.messages?.[selectedChat.messages.length - 1]?.id || null
+        });
+        
+        console.log('Block record created:', response.data);
+        
+        // Optionally refresh data to show updated block counts
+        mutate();
+      } catch (error) {
+        console.error('Error creating block record:', error);
+        // You might want to show an error notification here
+      }
+    }
   };
 
   return (

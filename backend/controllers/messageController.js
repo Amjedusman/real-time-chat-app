@@ -58,6 +58,40 @@ const messageController = {
       console.error("Error sending message:", error);
       res.status(500).json({ error: "Failed to send message" });
     }
+  },
+
+  fetchMessages: async (req, res) => {
+    const chatId = req.params.chatId;
+
+    try {
+      // Fetch messages from the database
+      const messages = await prisma.message.findMany({
+        where: { chatId },
+        include: {
+          sender: {
+            select: {
+              username: true,
+              blockCount: true
+            }
+          }
+        }
+      });
+
+      // Transform the data to match the frontend structure
+      const transformedMessages = messages.map(message => ({
+        id: message.id,
+        content: message.content,
+        userId: message.senderId,
+        senderUsername: message.sender.username,
+        senderBlockCount: message.sender.blockCount,
+        createdAt: message.createdAt
+      }));
+
+      res.status(200).json({ messages: transformedMessages });
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
   }
 };
 

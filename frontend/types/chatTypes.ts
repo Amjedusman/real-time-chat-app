@@ -14,6 +14,7 @@ export interface ChatMessage {
     chatId: number;
     content: string;
     senderUsername: string;
+    senderBlockCount: number;
     status: string;
     imageUrl: string | null;
     createdAt: string;

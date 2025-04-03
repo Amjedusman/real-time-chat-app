@@ -31,8 +31,20 @@ const ChatWindow = ({ chat }: { chat: Chat | null }) => {
               <AvatarFallback>CN</AvatarFallback>
             </Avatar>
             <div className="grid gap-1">
+<<<<<<< Updated upstream
               <div className="font-semibold">{message.senderUsername}</div>
               <div className="line-clamp-1 text-xs">{message.createdAt}</div>
+=======
+              <div className="font-semibold flex items-center gap-2">
+                {message.senderUsername}
+                {message.senderBlockCount >= 3 && (
+                  <span className="text-red-600" title={`This user has been blocked ${message.senderBlockCount} times`}>
+                    🚩
+                  </span>
+                )}
+              </div>
+              <div className="line-clamp-1 text-xs">{formatMessageDate(message.createdAt)}</div>
+>>>>>>> Stashed changes
               <div className="line-clamp-1 text-sm">{message.content}</div>
             </div>
           </div>

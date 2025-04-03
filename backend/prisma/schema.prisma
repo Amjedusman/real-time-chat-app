@@ -18,6 +18,7 @@ model User {
   updatedAt    DateTime     @updatedAt
   messages     Message[]
   participants Participant[]
+  blockCount   Int          @default(0)
 }
 
 model Chat {
